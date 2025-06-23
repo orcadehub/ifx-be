@@ -1,5 +1,4 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import querystring from 'querystring';
 
 const router = express.Router();
@@ -9,7 +8,6 @@ const CLIENT_SECRET = process.env.INSTAGRAM_CLIENT_SECRET;
 const REDIRECT_URI = 'http://localhost:4000/api/auth/instagram/callback';
 
 router.get('/instagram', (req, res) => {
-    console.log("i am here")
   const authUrl = `https://api.instagram.com/oauth/authorize?` + querystring.stringify({
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
@@ -40,7 +38,6 @@ router.get('/instagram/callback', async (req, res) => {
 
     if (data.access_token) {
       console.log('✅ Instagram access_token:', data.access_token);
-      // Redirect to your frontend dashboard or handle token storage
       res.redirect('http://localhost:3000/social');
     } else {
       res.status(400).send('OAuth failed: ' + JSON.stringify(data));
