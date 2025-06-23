@@ -14,7 +14,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/autth', auth);
 app.use('/api', dataDeletionRoutes);
 
-
+app.get('/',(req,res)=>{
+    res.send("it is working")
+})
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
