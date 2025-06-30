@@ -19,21 +19,22 @@ function verifySignedRequest(signedRequest) {
 }
 
 router.post('/data-deletion', (req, res) => {
+    res.send("Hello")
   const signedRequest = req.body.signed_request;
 
-  if (!verifySignedRequest(signedRequest)) {
-    return res.status(400).json({ error: 'Invalid signed request' });
-  }
+//   if (!verifySignedRequest(signedRequest)) {
+//     return res.status(400).json({ error: 'Invalid signed request' });
+//   }
 
-  // Extract user_id from payload
-  const payload = JSON.parse(
-    Buffer.from(signedRequest.split('.')[1], 'base64').toString('utf8')
-  );
+//   // Extract user_id from payload
+//   const payload = JSON.parse(
+//     Buffer.from(signedRequest.split('.')[1], 'base64').toString('utf8')
+//   );
 
-  const userId = payload.user_id;
+//   const userId = payload.user_id;
 
-  // Delete the user's data here...
-  console.log('Delete data for user:', userId);
+//   // Delete the user's data here...
+//   console.log('Delete data for user:', userId);
 
   res.json({
     url: `http://localhost:4000/api/deletion-status/${userId}`
