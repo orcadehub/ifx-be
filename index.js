@@ -18,7 +18,7 @@ const app = express();
 
 // ✅ Middleware
 app.use(cors({
-  origin: ["http://localhost:5173","https://www.influexkonnect.com"], // ✅ Remove trailing slash
+  origin: ["https://www.influexkonnect.com","http://localhost:5173"], // ✅ Remove trailing slash
   credentials: true
 }));
 app.use(express.json());
