@@ -11,7 +11,7 @@ import authRoutes from './routes/authRoutes.js';
 import auth from './routes/autth.js';
 import dataDeletionRoutes from './routes/dataDeletionRoutes.js';
 import chatRoute from './routes/chat_route.js';
-
+import otpRoute from './routes/otp_route.js'
 dotenv.config();
 
 const app = express();
@@ -28,6 +28,7 @@ app.use('/api', authRoutes);
 app.use('/api', auth);
 app.use('/api', dataDeletionRoutes);
 app.use('/api', chatRoute);
+app.use('/api', otpRoute);
 
 app.get('/', (req, res) => {
   res.send("🚀 Server is working");
@@ -37,11 +38,15 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // ✅ No trailing slash
+    origin: [
+      "http://localhost:5173",
+      "https://www.influexkonnect.com"
+    ],
     methods: ["GET", "POST"],
     credentials: true
   }
 });
+
 
 // ✅ Socket.IO Logic
 io.on("connection", (socket) => {
@@ -50,7 +55,7 @@ io.on("connection", (socket) => {
   // Join user-specific room
   socket.on("join", (userId) => {
     socket.join(`user-${userId}`);
-    console.log(`User ${userId} joined room user-${userId}`);
+    // console.log(`User ${userId} joined room user-${userId}`);
   });
 
   // Handle message sending
