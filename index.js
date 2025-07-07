@@ -12,7 +12,7 @@ import auth from "./routes/autth.js";
 import dataDeletionRoutes from "./routes/dataDeletionRoutes.js";
 import chatRoute from "./routes/chat_route.js";
 import otpRoute from "./routes/otp_route.js";
-import fbRoute from "./routes/fb_routes.js";
+// import fbRoute from "./routes/fb_routes.js";
 import userRoutes from "./routes/user_route.js";
 dotenv.config();
 
@@ -33,7 +33,7 @@ app.use("/api", auth);
 app.use("/api", dataDeletionRoutes);
 app.use("/api", chatRoute);
 app.use("/api", otpRoute);
-app.use("/api", fbRoute);
+// app.use("/api", fbRoute);
 app.use("/api", userRoutes);
 
 app.get("/", (req, res) => {
