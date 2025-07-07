@@ -12,13 +12,14 @@ import auth from './routes/autth.js';
 import dataDeletionRoutes from './routes/dataDeletionRoutes.js';
 import chatRoute from './routes/chat_route.js';
 import otpRoute from './routes/otp_route.js'
+import fbRoute from './routes/fb_routes.js'
 dotenv.config();
 
 const app = express();
 
 // ✅ Middleware
 app.use(cors({
-  origin: ["https://www.influexkonnect.com","http://localhost:5173"], // ✅ Remove trailing slash
+  origin: ["https://www.influexkonnect.com","http://localhost:5173","https://fancy-profiterole-564f54.netlify.app"], 
   credentials: true
 }));
 app.use(express.json());
@@ -29,6 +30,7 @@ app.use('/api', auth);
 app.use('/api', dataDeletionRoutes);
 app.use('/api', chatRoute);
 app.use('/api', otpRoute);
+app.use('/api', fbRoute);
 
 app.get('/', (req, res) => {
   res.send("🚀 Server is working");
@@ -40,7 +42,8 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:5173",
-      "https://www.influexkonnect.com"
+      "https://www.influexkonnect.com",
+      "https://fancy-profiterole-564f54.netlify.app"
     ],
     methods: ["GET", "POST"],
     credentials: true
