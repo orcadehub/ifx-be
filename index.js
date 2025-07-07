@@ -1,38 +1,42 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import http from 'http';
-import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import pool from './config/db.js'; // ✅ Make sure this is your PostgreSQL pool
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import http from "http";
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import pool from "./config/db.js"; // ✅ Make sure this is your PostgreSQL pool
 
 // Routes
-import authRoutes from './routes/authRoutes.js';
-import auth from './routes/autth.js';
-import dataDeletionRoutes from './routes/dataDeletionRoutes.js';
-import chatRoute from './routes/chat_route.js';
-import otpRoute from './routes/otp_route.js'
-import fbRoute from './routes/fb_routes.js'
+import authRoutes from "./routes/authRoutes.js";
+import auth from "./routes/autth.js";
+import dataDeletionRoutes from "./routes/dataDeletionRoutes.js";
+import chatRoute from "./routes/chat_route.js";
+import otpRoute from "./routes/otp_route.js";
+import fbRoute from "./routes/fb_routes.js";
+import userRoutes from "./routes/user_route.js";
 dotenv.config();
 
 const app = express();
 
 // ✅ Middleware
-app.use(cors({
-  origin: ["https://www.influexkonnect.com","http://localhost:5173"], // ✅ Remove trailing slash
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: ["https://www.influexkonnect.com", "http://localhost:5173"], // ✅ Remove trailing slash
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // ✅ Routes
-app.use('/api', authRoutes);
-app.use('/api', auth);
-app.use('/api', dataDeletionRoutes);
-app.use('/api', chatRoute);
-app.use('/api', otpRoute);
-app.use('/api', fbRoute);
+app.use("/api", authRoutes);
+app.use("/api", auth);
+app.use("/api", dataDeletionRoutes);
+app.use("/api", chatRoute);
+app.use("/api", otpRoute);
+app.use("/api", fbRoute);
+app.use("/api", userRoutes);
 
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send("🚀 Server is working");
 });
 
@@ -40,15 +44,11 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://www.influexkonnect.com"
-    ],
+    origin: ["https://www.influexkonnect.com", "http://localhost:5173"],
     methods: ["GET", "POST"],
-    credentials: true
-  }
+    credentials: true,
+  },
 });
-
 
 // ✅ Socket.IO Logic
 io.on("connection", (socket) => {
@@ -89,13 +89,10 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("🔴 Socket disconnected:", socket.id);
   });
-
 });
 
 // ✅ Start Server
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
-
-
-
-
+server.listen(PORT, () =>
+  console.log(`✅ Server running on http://localhost:${PORT}`)
+);

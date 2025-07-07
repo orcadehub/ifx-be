@@ -19,3 +19,19 @@
     receiver_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     timestamp TIMESTAMP DEFAULT NOW()
+
+
+
+**********. OTPS **************
+
+CREATE TABLE otps (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL,
+  otp TEXT NOT NULL,
+  verified BOOLEAN DEFAULT FALSE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+*********** ALTER USERS ***************
