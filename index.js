@@ -19,7 +19,7 @@ const app = express();
 
 // ✅ Middleware
 app.use(cors({
-  origin: ["https://www.influexkonnect.com","http://localhost:5173","https://fancy-profiterole-564f54.netlify.app"], 
+  origin: ["https://www.influexkonnect.com","http://localhost:5173"], // ✅ Remove trailing slash
   credentials: true
 }));
 app.use(express.json());
@@ -42,8 +42,7 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:5173",
-      "https://www.influexkonnect.com",
-      "https://fancy-profiterole-564f54.netlify.app"
+      "https://www.influexkonnect.com"
     ],
     methods: ["GET", "POST"],
     credentials: true
