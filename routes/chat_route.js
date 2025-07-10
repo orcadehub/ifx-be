@@ -38,7 +38,7 @@ router.post("/send", authenticateToken, async (req, res) => {
 router.get("/chat/:userId", authenticateToken, async (req, res) => {
   const sender_id = req.user.id;
   const receiver_id = req.params.userId;
-
+  
   try {
     const messages = await pool.query(
       `SELECT id, sender_id, receiver_id, content, timestamp
@@ -102,6 +102,26 @@ router.get("/users", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ message: "❌ Failed to fetch users" });
+  }
+});
+
+router.get("/users/:id", authenticateToken, async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT id, fullname AS name, email, role FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "❌ Failed to fetch user" });
   }
 });
 

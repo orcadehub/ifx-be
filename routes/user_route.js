@@ -59,7 +59,6 @@ const services = [
 
 // GET /influencers
 router.get("/influencers", async (req, res) => {
-  console.log("object");
   try {
     const result = await pool.query(
       `SELECT id, fullname AS name, email, phone, role, profile_pic, username, category, stats, prices, data, posts
