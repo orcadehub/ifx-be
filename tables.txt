@@ -10,6 +10,47 @@
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE users
+ADD COLUMN username TEXT,
+ADD COLUMN profile_pic TEXT,
+ADD COLUMN category TEXT,
+ADD COLUMN stats JSONB,
+ADD COLUMN prices JSONB,
+ADD COLUMN data JSONB,
+ADD COLUMN posts JSONB;
+
+ALTER TABLE users
+ADD COLUMN fb_id TEXT,
+ADD COLUMN access_token TEXT,
+ADD COLUMN username TEXT,
+ADD COLUMN profile_pic TEXT,
+ADD COLUMN category TEXT,
+ADD COLUMN prices JSONB,
+ADD COLUMN stats JSONB,
+ADD COLUMN data JSONB,
+ADD COLUMN posts JSONB;
+
+
+ALTER TABLE users
+ADD COLUMN fb_id TEXT,
+ADD COLUMN access_token TEXT
+
+ALTER TABLE users
+ADD COLUMN fb_username TEXT,
+ADD COLUMN fb_profile_pic TEXT,
+ADD COLUMN fb_access_token TEXT,
+ADD COLUMN ig_id TEXT,
+ADD COLUMN ig_username TEXT,
+ADD COLUMN ig_profile_pic TEXT,
+ADD COLUMN ig_access_token TEXT,
+ADD COLUMN tw_id TEXT,
+ADD COLUMN tw_username TEXT,
+ADD COLUMN tw_profile_pic TEXT,
+ADD COLUMN tw_access_token TEXT,
+ADD COLUMN yt_id TEXT,
+ADD COLUMN yt_username TEXT,
+ADD COLUMN yt_profile_pic TEXT,
+ADD COLUMN yt_access_token TEXT
 
 ************. messages table **********
 

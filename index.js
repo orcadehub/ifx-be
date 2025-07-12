@@ -8,12 +8,12 @@ import pool from "./config/db.js"; // ✅ Make sure this is your PostgreSQL pool
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
-import auth from "./routes/autth.js";
 import dataDeletionRoutes from "./routes/dataDeletionRoutes.js";
 import chatRoute from "./routes/chat_route.js";
 import otpRoute from "./routes/otp_route.js";
-// import fbRoute from "./routes/fb_routes.js";
 import userRoutes from "./routes/user_route.js";
+import fbRoute from "./routes/fb_routes.js";
+import instaRoute from "./routes/insta_routes.js";
 dotenv.config();
 
 const app = express();
@@ -29,11 +29,11 @@ app.use(express.json());
 
 // ✅ Routes
 app.use("/api", authRoutes);
-app.use("/api", auth);
 app.use("/api", dataDeletionRoutes);
 app.use("/api", chatRoute);
 app.use("/api", otpRoute);
-// app.use("/api", fbRoute);
+app.use("/api", fbRoute);
+app.use("/api", instaRoute);
 app.use("/api", userRoutes);
 
 app.get("/", (req, res) => {
