@@ -23,48 +23,51 @@ router.get("/auth/facebook/callback", async (req, res) => {
     const userId = state;
 
     // Step 1: Exchange code for access token
-    const tokenRes = await axios.get(
+    const tokenRes = await fetch(
       `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${appId}&redirect_uri=${redirectUri}&client_secret=${appSecret}&code=${code}`
     );
-    const accessToken = tokenRes.data.access_token;
+    const tokenJson = await tokenRes.json();
+    const accessToken = tokenJson.access_token;
 
     // Step 2: Get basic user profile
-    const userProfileRes = await axios.get(
+    const profileRes = await fetch(
       `https://graph.facebook.com/me?fields=id,name,picture,email&access_token=${accessToken}`
     );
-    const { id: fbId, name, picture, email } = userProfileRes.data;
+    const profileData = await profileRes.json();
+    const { id: fbId, name, picture, email } = profileData;
     const profilePic = picture?.data?.url || null;
 
-    // Step 3: Get user data (as JSON)
-    const userDataRes = await axios.get(
+    // Step 3: Get extended profile data
+    const userDataRes = await fetch(
       `https://graph.facebook.com/me?fields=id,name,email,birthday,hometown,gender,location,link&access_token=${accessToken}`
     );
-    const fbData = userDataRes.data;
+    const fbData = await userDataRes.json();
 
-    // Step 4: Get posts
+    // Step 4: Get recent posts (optional)
     let fbPosts = null;
     try {
-      const postsRes = await axios.get(
+      const postsRes = await fetch(
         `https://graph.facebook.com/me/posts?limit=10&access_token=${accessToken}`
       );
-      fbPosts = postsRes.data;
+      fbPosts = await postsRes.json();
     } catch (postErr) {
       console.warn("Failed to fetch posts:", postErr.message);
     }
 
-    // Step 5: Update database
+    // Step 5: Update DB
     await pool.query(
       `UPDATE users 
-   SET fb_id = $1, 
-       fb_username = $2, 
-       fb_profile_pic = $3, 
-       fb_access_token = $4,
-       data = jsonb_set(COALESCE(data, '{}'::jsonb), '{facebook}', to_jsonb($5::json), true),
-       posts = jsonb_set(COALESCE(posts, '{}'::jsonb), '{facebook}', to_jsonb($6::json), true)
-   WHERE id = $7`,
+       SET fb_id = $1, 
+           fb_username = $2, 
+           fb_profile_pic = $3, 
+           fb_access_token = $4,
+           data = jsonb_set(COALESCE(data, '{}'::jsonb), '{facebook}', to_jsonb($5::json), true),
+           posts = jsonb_set(COALESCE(posts, '{}'::jsonb), '{facebook}', to_jsonb($6::json), true)
+       WHERE id = $7`,
       [fbId, name, profilePic, accessToken, fbData, fbPosts, userId]
     );
 
+    // Redirect to frontend
     const frontendUrl = `http://localhost:5173/dashboard/settings`;
     res.redirect(frontendUrl);
   } catch (err) {
