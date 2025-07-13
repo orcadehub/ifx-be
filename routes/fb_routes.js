@@ -1,6 +1,5 @@
 // backend/routes/auth.js or similar
 import express from "express";
-import axios from "axios";
 import pool from "../config/db.js";
 import dotenv from "dotenv";
 const router = express.Router();
