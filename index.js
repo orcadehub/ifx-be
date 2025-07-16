@@ -12,7 +12,7 @@ import dataDeletionRoutes from "./routes/dataDeletionRoutes.js";
 import chatRoute from "./routes/chat_route.js";
 import otpRoute from "./routes/otp_route.js";
 import userRoutes from "./routes/user_route.js";
-import fbRoute from "./routes/fb_routes.js";
+import fbRoute from "./routes/fb_login.js";
 // import instaRoute from "./routes/insta_routes.js";
 dotenv.config();
 

@@ -7,11 +7,10 @@ dotenv.config();
 
 const appId = process.env.FB_ID;
 const appSecret = process.env.FB_CODE;
-const redirectUri = `${process.env.REDIRECT}/api/auth/facebook/callback`;
 // Step 1: Redirect to Facebook Login
 router.get("/auth/facebook", (req, res) => {
   const { userId } = req.query;
-  const fbLoginUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile,email&state=${userId}`;
+  const fbLoginUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${process.env.REDIRECT}&scope=public_profile,email&state=${userId}`;
   res.redirect(fbLoginUrl);
 });
 

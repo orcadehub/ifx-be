@@ -6,6 +6,7 @@
   email VARCHAR(100) UNIQUE NOT NULL,
   phone VARCHAR(20) UNIQUE NOT NULL,
   password TEXT NOT NULL,
+  
   role VARCHAR(20) NOT NULL CHECK (role IN ('business', 'influencer', 'admin')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
