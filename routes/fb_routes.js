@@ -11,7 +11,7 @@ const redirectUri = `${process.env.REDIRECT}/api/auth/facebook/callback`;
 // Step 1: Redirect to Facebook Login
 router.get("/auth/facebook", (req, res) => {
   const { userId } = req.query;
-  const fbLoginUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile,pages_show_list,email&state=${userId}`;
+  const fbLoginUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile,email&state=${userId}`;
   res.redirect(fbLoginUrl);
 });
 
