@@ -53,6 +53,11 @@ ADD COLUMN yt_username TEXT,
 ADD COLUMN yt_profile_pic TEXT,
 ADD COLUMN yt_access_token TEXT
 
+ALTER TABLE users
+  ADD COLUMN facebook_data JSONB,
+  ADD COLUMN facebook_posts JSONB;
+
+
 ************. messages table **********
 
 

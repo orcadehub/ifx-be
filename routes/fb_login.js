@@ -88,7 +88,6 @@ router.get("/auth/facebook/callback", async (req, res) => {
         [fbId, profilePic, user.id]
       );
     }
-
     const jwtToken = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
@@ -96,11 +95,13 @@ router.get("/auth/facebook/callback", async (req, res) => {
     );
     // Send user data and token as query params (encoded)
     const frontendURL = process.env.FRONTEND_URL || "http://localhost:5173";
-    const redirectUrl = `${frontendURL}/dashboard/facebook/?token=${encodeURIComponent(
+    const redirectUrl = `${frontendURL}/dashboard/facebook?token=${encodeURIComponent(
       jwtToken
     )}&name=${encodeURIComponent(user.fullname)}&email=${encodeURIComponent(
       user.email
-    )}&role=${encodeURIComponent(user.role)}`;
+    )}&role=${encodeURIComponent(user.role)}&profilePic=${encodeURIComponent(
+      user.profile_pic
+    )}`;
 
     res.redirect(redirectUrl);
   } catch (err) {

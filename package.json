@@ -24,6 +24,7 @@
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.2",
+    "react-toastify": "^11.0.5",
     "socket.io": "^4.8.1"
   }
 }

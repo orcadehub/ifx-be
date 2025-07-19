@@ -67,7 +67,7 @@ router.get("/influencers", async (req, res) => {
          email, 
          phone, 
          role, 
-         fb_profile_pic as profile_pic, 
+         profile_pic as profile_pic, 
          fb_username as username, 
          category, 
          stats, 
