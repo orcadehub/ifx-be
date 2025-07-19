@@ -57,6 +57,8 @@ ALTER TABLE users
   ADD COLUMN facebook_data JSONB,
   ADD COLUMN facebook_posts JSONB;
 
+ALTER TABLE users ADD COLUMN is2FAEnabled BOOLEAN DEFAULT FALSE;
+
 
 ************. messages table **********
 

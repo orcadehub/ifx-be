@@ -33,9 +33,6 @@ CREATE TABLE messages (
   }
 });
 
-
-
-
 // Allowed roles
 const allowedRoles = ["business", "influencer", "admin"];
 
@@ -91,7 +88,9 @@ router.post("/signup", async (req, res) => {
     await pool.query(`DELETE FROM otps WHERE email = $1`, [email]);
 
     res.status(201).json({
-      message: `✅ ${role.charAt(0).toUpperCase() + role.slice(1)} registered successfully.`,
+      message: `✅ ${
+        role.charAt(0).toUpperCase() + role.slice(1)
+      } registered successfully.`,
       user: insertResult.rows[0],
     });
   } catch (err) {
@@ -132,6 +131,7 @@ router.post("/login", async (req, res) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      profilePic:user.profile_pic
     };
 
     const token = jwt.sign(payload, JWT_SECRET);
@@ -153,7 +153,29 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// route: POST /api/check-2fa
+router.get("/check-2fa", async (req, res) => {
+  const { email } = req.query;
+  console.log(email)
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT is2FAEnabled FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({ is2FAEnabled: result.rows[0].is2FAEnabled });
+  } catch (err) {
+    console.error("Error checking 2FA:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;
-
-
-

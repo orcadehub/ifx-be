@@ -89,7 +89,6 @@ router.post("/verify-otp", async (req, res) => {
     await pool.query(`UPDATE otps SET verified = true WHERE id = $1`, [
       record.id,
     ]);
-
     res.json({ success: true, message: "OTP verified successfully" });
   } catch (error) {
     console.error("OTP verification error:", error);
