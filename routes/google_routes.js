@@ -2,7 +2,6 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import pool from "../config/db.js";
-import fetch from "node-fetch";
 
 dotenv.config();
 const router = express.Router();
@@ -117,7 +116,7 @@ router.get("/auth/google/callback", async (req, res) => {
     )}&role=${encodeURIComponent(user.role)}&profilePic=${encodeURIComponent(
       user.profile_pic
     )}`;
-    
+
     console.log("🔁 Redirecting to frontend with token...");
     res.redirect(redirectUrl);
   } catch (err) {
