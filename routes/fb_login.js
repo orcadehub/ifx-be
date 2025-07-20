@@ -40,7 +40,7 @@ router.get("/auth/facebook/callback", async (req, res) => {
     const { access_token } = await tokenRes.json();
     const profileUrl = `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${access_token}`;
     const profileRes = await fetch(profileUrl);
-
+    
     if (!profileRes.ok) {
       const errorText = await profileRes.text();
       try {

@@ -14,6 +14,7 @@ import otpRoute from "./routes/otp_route.js";
 import userRoutes from "./routes/user_route.js";
 import fbRoute from "./routes/fb_login.js";
 import fbRouters from "./routes/fb_routes.js";
+import googleAuthRoutes from "./routes/google_routes.js";
 // import instaRoute from "./routes/insta_routes.js";
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use("/api", fbRoute);
 app.use("/api/connect", fbRouters);
 // app.use("/api", instaRoute);
 app.use("/api", userRoutes);
+app.use("/api", googleAuthRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚀 Server is working");
