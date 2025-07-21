@@ -18,9 +18,9 @@ router.get("/auth/google/callback", async (req, res) => {
   const { code, state } = req.query;
   const userRole = state || "influencer";
 
-  console.log("🌐 Google OAuth Callback Triggered");
-  console.log("➡️ Code:", code);
-  console.log("➡️ State/UserRole:", userRole);
+//   console.log("🌐 Google OAuth Callback Triggered");
+//   console.log("➡️ Code:", code);
+//   console.log("➡️ State/UserRole:", userRole);
 
   if (!code) {
     return res.status(400).json({ error: "Missing authorization code" });
@@ -41,7 +41,7 @@ router.get("/auth/google/callback", async (req, res) => {
     });
 
     const tokenData = await tokenRes.json();
-    console.log("🔑 Token Response:", tokenData);
+    // console.log("🔑 Token Response:", tokenData);
 
     const accessToken = tokenData.access_token;
     const idToken = tokenData.id_token;
@@ -62,7 +62,7 @@ router.get("/auth/google/callback", async (req, res) => {
     );
 
     const googleProfile = await profileRes.json();
-    console.log("👤 Google Profile:", googleProfile);
+    // console.log("👤 Google Profile:", googleProfile);
 
     const {
       id: googleId,
@@ -90,14 +90,14 @@ router.get("/auth/google/callback", async (req, res) => {
         [googleId, fullname, email, profilePic, "google_default", userRole]
       );
       user = insertRes.rows[0];
-      console.log("🆕 New User Created:", user);
+    //   console.log("🆕 New User Created:", user);
     } else {
       user = existingUserRes.rows[0];
       await pool.query(
         `UPDATE users SET google_id = $1, profile_pic = $2 WHERE id = $3`,
         [googleId, profilePic, user.id]
       );
-      console.log("✅ Existing User Found & Updated:", user);
+    //   console.log("✅ Existing User Found & Updated:", user);
     }
 
     // Step 4: Generate JWT
@@ -117,10 +117,10 @@ router.get("/auth/google/callback", async (req, res) => {
       user.profile_pic
     )}`;
 
-    console.log("🔁 Redirecting to frontend with token...");
+    // console.log("🔁 Redirecting to frontend with token...");
     res.redirect(redirectUrl);
   } catch (err) {
-    console.error("❌ Google Auth Error:", err);
+    // console.error("❌ Google Auth Error:", err);
     res.status(500).json({
       error: "Google authentication failed.",
       message: err.message,

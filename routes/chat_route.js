@@ -68,6 +68,7 @@ router.get("/chats", authenticateToken, async (req, res) => {
           ELSE m.sender_id
         END AS other_user_id,
         u.fullname AS other_user_name,
+        u.profile_pic,
         m.content AS last_message,
         m.timestamp
       FROM messages m

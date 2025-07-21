@@ -61,7 +61,7 @@ io.on("connection", (socket) => {
   // Join user-specific room
   socket.on("join", (userId) => {
     socket.join(`user-${userId}`);
-    // console.log(`User ${userId} joined room user-${userId}`);
+    console.log(`User ${userId} joined room user-${userId}`);
   });
 
   // Handle message sending

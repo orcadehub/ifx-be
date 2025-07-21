@@ -67,6 +67,8 @@ router.get("/influencers", async (req, res) => {
          email, 
          phone, 
          role, 
+         fb_access_token,
+         fb_id,
          profile_pic as profile_pic, 
          fb_username as username, 
          category, 
@@ -81,6 +83,7 @@ router.get("/influencers", async (req, res) => {
     const influencers = result.rows.map((row) => ({
       id: row.id,
       name: row.name,
+      fb_id:row.fb_id,
       username:
         row.username || (row.email ? row.email.split("@")[0] : "unknown_user"),
       category: row.category || "General",
@@ -91,6 +94,7 @@ router.get("/influencers", async (req, res) => {
         twitter: "0",
         youtube: "0",
       },
+      fb_access_token:row.fb_access_token,
       prices: row.prices || {
         "Post Image/Video": "499₹",
         "Reels/Shorts": "499₹",
@@ -118,5 +122,6 @@ router.get("/influencers", async (req, res) => {
     res.status(500).json({ message: "❌ Failed to fetch influencers." });
   }
 });
+
 
 export default router;

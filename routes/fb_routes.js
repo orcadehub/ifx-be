@@ -63,7 +63,7 @@ router.get("/auth/facebook/callback", async (req, res) => {
 
     // 3. Get extended profile data
     const userDataRes = await fetch(
-      `https://graph.facebook.com/me?fields=id,name,email,birthday,hometown,gender,location,link&access_token=${access_token}`
+      `https://graph.facebook.com/me?fields=id,name,email,friends,birthday,hometown,gender,location,link&access_token=${access_token}`
     );
     const fbData = await userDataRes.json();
 
