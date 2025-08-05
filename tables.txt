@@ -59,6 +59,20 @@ ALTER TABLE users
 
 ALTER TABLE users ADD COLUMN is2FAEnabled BOOLEAN DEFAULT FALSE;
 
+ALTER TABLE users ADD COLUMN google_id VARCHAR;
+
+
+ALTER TABLE users
+ADD COLUMN business_name VARCHAR(255),
+ADD COLUMN business_status VARCHAR(100),
+ADD COLUMN service_type VARCHAR(100),
+ADD COLUMN website VARCHAR(255),
+ADD COLUMN location TEXT,
+ADD COLUMN price_range VARCHAR(100),
+ADD COLUMN account_status VARCHAR(50);
+
+ALTER TABLE users
+ADD COLUMN wishlist JSONB DEFAULT '[]'::JSONB;
 
 ************. messages table **********
 
@@ -86,4 +100,32 @@ CREATE TABLE otps (
 );
 
 
-*********** ALTER USERS ***************
+*********** Orders Table ***************
+
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  influencer_id INTEGER REFERENCES users(id),
+  services TEXT[], -- Array of service names
+  total_price NUMERIC,
+  description TEXT,
+  affiliated_links TEXT[],
+  coupon_code TEXT,
+  post_datetime TIMESTAMP,
+  file_url TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+ALTER TABLE orders
+ADD COLUMN IF NOT EXISTS inf_name TEXT,
+ADD COLUMN IF NOT EXISTS username TEXT,
+ADD COLUMN IF NOT EXISTS order_date TIMESTAMP DEFAULT NOW(),
+ADD COLUMN IF NOT EXISTS scheduled_date DATE,
+ADD COLUMN IF NOT EXISTS scheduled_time TIME,
+ADD COLUMN IF NOT EXISTS order_type VARCHAR(20),
+ADD COLUMN IF NOT EXISTS amount NUMERIC;
+ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pending';
+
+
+CLOUDINARY_URL=cloudinary://491314846178849:Z8tdIsOP4Gc53qDw_Cm1lCbkO4I@deq5tid6g

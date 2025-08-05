@@ -18,6 +18,7 @@ router.get("/auth/facebook/callback", async (req, res) => {
   const { code, state } = req.query;
   const userRole = state || "influencer";
 
+
   try {
     const facebookTokenUrl = `https://graph.facebook.com/v19.0/oauth/access_token?client_id=${process.env.FB_APP_ID}&redirect_uri=${process.env.FB_REDIRECT_URI}&client_secret=${process.env.FB_APP_CODE}&code=${code}`;
     const tokenRes = await fetch(facebookTokenUrl);

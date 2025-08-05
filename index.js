@@ -15,7 +15,8 @@ import userRoutes from "./routes/user_route.js";
 import fbRoute from "./routes/fb_login.js";
 import fbRouters from "./routes/fb_routes.js";
 import googleAuthRoutes from "./routes/google_routes.js";
-// import instaRoute from "./routes/insta_routes.js";
+import fileRoutes from "./routes/file_route.js";
+import paymentRoutes from "./routes/payment_route.js";
 dotenv.config();
 
 const app = express();
@@ -36,7 +37,8 @@ app.use("/api", chatRoute);
 app.use("/api", otpRoute);
 app.use("/api", fbRoute);
 app.use("/api/connect", fbRouters);
-// app.use("/api", instaRoute);
+app.use("/api", fileRoutes);
+app.use("/api", paymentRoutes);
 app.use("/api", userRoutes);
 app.use("/api", googleAuthRoutes);
 
