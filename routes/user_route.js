@@ -89,17 +89,13 @@ router.get("/influencers", authenticateToken, async (req, res) => {
     const influencers = result.rows.map((row) => ({
       id: row.id,
       name: row.name,
+      email:row.email,
       fb_id: row.fb_id,
       username:
         row.username || (row.email ? row.email.split("@")[0] : "unknown_user"),
       category: row.category || "General",
       profilePic: row.profile_pic || "https://via.placeholder.com/100x100",
-      stats: row.stats || {
-        instagram: "0",
-        facebook: "0",
-        twitter: "0",
-        youtube: "0",
-      },
+      stats: row.stats,
       fb_access_token: row.fb_access_token,
       prices: {
         facebook: {
@@ -187,7 +183,6 @@ router.get("/influencers", authenticateToken, async (req, res) => {
 });
 
 // GET user by email
-
 router.get("/user-details/:email", async (req, res) => {
   const { email } = req.params;
   // console.log("Received request for user email:", email);
@@ -195,7 +190,7 @@ router.get("/user-details/:email", async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, fullname, email, role, username, profile_pic, 
-              business_name, business_status, service_type, 
+              business_name, business_status, service_type,stats,data,posts, 
               website, location, price_range, account_status, category 
        FROM users 
        WHERE email = $1`,
@@ -370,3 +365,5 @@ router.post("/wishlist", authenticateToken, async (req, res) => {
 });
 
 export default router;
+
+

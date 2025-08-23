@@ -96,7 +96,6 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-
 // Reset password after OTP verification
 router.post("/reset-password", async (req, res) => {
   const { email, newPassword } = req.body;
@@ -148,12 +147,112 @@ router.post("/reset-password", async (req, res) => {
     });
   } catch (error) {
     console.error("Reset password error:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Server error while resetting password",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Server error while resetting password",
+    });
+  }
+});
+
+// Service request submission
+router.post("/service-request", async (req, res) => {
+  const {
+    fullName,
+    email,
+    phoneNumber,
+    projectDescription,
+    budget,
+    timeline,
+    serviceTitle,
+  } = req.body;
+
+  
+  if (
+    !fullName ||
+    !email ||
+    !phoneNumber ||
+    !projectDescription ||
+    !budget ||
+    !timeline ||
+    !serviceTitle
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "All fields are required" });
+  }
+
+  try {
+    // Optionally store the request in a database
+    await pool.query(
+      `INSERT INTO service_requests (full_name, email, phone_number, project_description, budget, timeline, service_title, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        fullName,
+        email,
+        phoneNumber,
+        projectDescription,
+        budget,
+        timeline,
+        serviceTitle,
+        new Date(),
+      ]
+    );
+
+    // Send confirmation email to user
+    await transporter.sendMail({
+      from: process.env.MAIL_USER,
+      to: email,
+      subject: "Service Request Confirmation - InfluexKonnect",
+      html: `
+        <p>Hello ${fullName},</p>
+        <p>Thank you for submitting a request for our <b>${serviceTitle}</b> service on <b>InfluexKonnect</b>.</p>
+        <h4>Your Request Details:</h4>
+        <ul>
+          <li><b>Service:</b> ${serviceTitle}</li>
+          <li><b>Project Description:</b> ${projectDescription}</li>
+          <li><b>Budget:</b> ${budget}</li>
+          <li><b>Timeline:</b> ${timeline}</li>
+          <li><b>Phone Number:</b> ${phoneNumber}</li>
+        </ul>
+        <p>Our team will review your request and get back to you soon.</p>
+        <p>Thank you,<br/>InfluexKonnect Team</p>
+      `,
+    });
+
+    // Send notification email to admin
+    await transporter.sendMail({
+      from: process.env.MAIL_USER,
+      to: process.env.ADMIN_EMAIL, // Admin email from .env
+      subject: "New Service Request - InfluexKonnect",
+      html: `
+        <p>Hello Admin,</p>
+        <p>A new service request has been submitted on <b>InfluexKonnect</b>.</p>
+        <h4>Request Details:</h4>
+        <ul>
+          <li><b>Name:</b> ${fullName}</li>
+          <li><b>Email:</b> ${email}</li>
+          <li><b>Phone Number:</b> ${phoneNumber}</li>
+          <li><b>Service:</b> ${serviceTitle}</li>
+          <li><b>Project Description:</b> ${projectDescription}</li>
+          <li><b>Budget:</b> ${budget}</li>
+          <li><b>Timeline:</b> ${timeline}</li>
+        </ul>
+        <p>Please follow up with the user as needed.</p>
+        <p>Thank you,<br/>InfluexKonnect System</p>
+      `,
+    });
+
+    res.json({
+      success: true,
+      message:
+        "Service request submitted successfully. Confirmation emails sent.",
+    });
+  } catch (error) {
+    console.error("Service request error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while processing service request",
+    });
   }
 });
 

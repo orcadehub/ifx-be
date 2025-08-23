@@ -128,4 +128,18 @@ ADD COLUMN IF NOT EXISTS amount NUMERIC;
 ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Pending';
 
 
+********************* Service_Request *************************
+CREATE TABLE service_requests (
+  id SERIAL PRIMARY KEY,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone_number VARCHAR(20) NOT NULL,
+  project_description TEXT NOT NULL,
+  budget VARCHAR(50) NOT NULL,
+  timeline VARCHAR(50) NOT NULL,
+  service_title VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+
 CLOUDINARY_URL=cloudinary://491314846178849:Z8tdIsOP4Gc53qDw_Cm1lCbkO4I@deq5tid6g

@@ -13,13 +13,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-
 // Place a new order
-router.post("/place-order", authenticateToken, (req, res) => {
+router.post("/place-order", authenticateToken, async (req, res) => {
   const busboy = Busboy({ headers: req.headers });
+  const startTime = new Date().toISOString(); // Timestamp for debugging
 
   let orderData = {};
-  let fileUploadPromise = null;
+  let fileUrl = null;
 
   busboy.on("field", (fieldname, val) => {
     try {
@@ -28,34 +28,51 @@ router.post("/place-order", authenticateToken, (req, res) => {
       } else {
         orderData[fieldname] = val;
       }
-      console.log(`Field ${fieldname}:`, val); // Debug log
+      console.log(`[${startTime}] Field [${fieldname}]:`, val); // Debug log with timestamp
     } catch (err) {
-      console.error(`Error parsing field ${fieldname}:`, err.message);
+      console.error(
+        `[${startTime}] Error parsing field [${fieldname}]: ${err.message}`
+      );
+      orderData[fieldname] = val; // Fallback to raw value
     }
   });
 
   busboy.on("file", (fieldname, file, filename) => {
-    fileUploadPromise = new Promise((resolve, reject) => {
-      const safeFilename =
-        typeof filename === "string" ? filename : "uploaded_file";
-      const publicId = safeFilename.split(".")[0];
-
+    const safeFilename = filename
+      ? filename.toString().split(".")[0]
+      : `uploaded_file_${Date.now()}`;
+    const uploadPromise = new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { resource_type: "raw", folder: "documents", public_id: publicId },
+        {
+          resource_type: "raw",
+          folder: "orders",
+          public_id: safeFilename,
+          overwrite: true,
+        },
         (err, result) => {
-          if (err) return reject(err);
+          if (err) {
+            console.error(`[${startTime}] Cloudinary upload error:`, err);
+            return reject(err);
+          }
           resolve(result.secure_url);
         }
       );
-
       file.pipe(stream);
     });
+
+    uploadPromise
+      .then((url) => {
+        fileUrl = url;
+        console.log(`[${startTime}] File uploaded successfully: ${url}`);
+      })
+      .catch((err) => {
+        console.error(`[${startTime}] File upload failed: ${err.message}`);
+      });
   });
 
   busboy.on("finish", async () => {
     try {
-      const file_url = fileUploadPromise ? await fileUploadPromise : null;
-
+      console.log(`[${startTime}] Processing order data:`, orderData); // Log received data
       const {
         userId,
         influencerId,
@@ -70,38 +87,145 @@ router.post("/place-order", authenticateToken, (req, res) => {
         influencer_name,
       } = orderData;
 
-      console.log("Received Order Data:", orderData); // Debug log
-
-      if (
-        !userId ||
-        !influencerId ||
-        !services ||
-        !totalPrice ||
-        !type ||
-        !influencer_name
-      ) {
-        return res.status(400).json({ message: "❌ Missing required fields" });
+      // Validate required fields with fallback for totalPrice
+      if (!userId || !influencerId || !services || !type || !influencer_name) {
+        console.log(`[${startTime}] Validation failed - Missing fields:`, {
+          userId,
+          influencerId,
+          services,
+          totalPrice,
+          type,
+          influencer_name,
+        });
+        return res.status(400).json({
+          message:
+            "Missing required fields: userId, influencerId, services, totalPrice, type, or influencer_name",
+        });
       }
 
+      // Calculate totalPrice if not provided (fallback)
+      let parsedTotalPrice = parseFloat(totalPrice);
+      if (isNaN(parsedTotalPrice) || parsedTotalPrice < 0) {
+        let calculatedTotalPrice = 0;
+        try {
+          const parsedServices = Array.isArray(services)
+            ? services
+            : JSON.parse(services);
+          calculatedTotalPrice = parsedServices.reduce(
+            (sum, s) => sum + (parseFloat(s.price) || 0),
+            0
+          );
+        } catch (err) {
+          console.log(
+            `[${startTime}] Failed to calculate totalPrice:`,
+            err.message
+          );
+        }
+        parsedTotalPrice = calculatedTotalPrice > 0 ? calculatedTotalPrice : 0;
+        console.log(
+          `[${startTime}] Using calculated totalPrice:`,
+          parsedTotalPrice
+        );
+      }
+
+      // Validate user authorization
       if (userId != req.user.id) {
-        return res.status(403).json({ message: "❌ Unauthorized user ID" });
+        console.log(`[${startTime}] Unauthorized user ID mismatch:`, {
+          userId,
+          reqUserId: req.user.id,
+        });
+        return res
+          .status(403)
+          .json({ message: "Unauthorized user ID mismatch" });
       }
 
+      // Check database connection
+      try {
+        await pool.query("SELECT 1");
+        console.log(`[${startTime}] Database connection successful`);
+      } catch (connErr) {
+        console.error(
+          `[${startTime}] Database connection error:`,
+          connErr.message
+        );
+        return res.status(500).json({ message: "Database connection failed" });
+      }
+
+      // Check if influencer exists
       const userQuery = `SELECT username FROM users WHERE id = $1`;
       const userResult = await pool.query(userQuery, [influencerId]);
       if (!userResult.rows[0]) {
-        return res.status(404).json({ message: "❌ Influencer not found" });
+        console.log(
+          `[${startTime}] Influencer not found for ID:`,
+          influencerId
+        );
+        return res.status(404).json({ message: "Influencer not found" });
       }
-      const username = userResult.rows[0].username;
+      const username = userResult.rows[0].username || frontendUsername;
 
+      // Validate services
+      let parsedServices = [];
+      try {
+        parsedServices = Array.isArray(services)
+          ? services
+          : JSON.parse(services);
+        if (!Array.isArray(parsedServices) || parsedServices.length === 0) {
+          throw new Error("Services must be a non-empty array");
+        }
+      } catch (err) {
+        console.log(
+          `[${startTime}] Invalid services format:`,
+          err.message,
+          services
+        );
+        return res
+          .status(400)
+          .json({ message: `Invalid services format: ${err.message}` });
+      }
+
+      // Validate affiliatedLinks
+      let parsedAffiliatedLinks = [];
+      try {
+        parsedAffiliatedLinks = Array.isArray(affiliatedLinks)
+          ? affiliatedLinks
+          : JSON.parse(affiliatedLinks);
+        if (!Array.isArray(parsedAffiliatedLinks)) {
+          throw new Error("Affiliated links must be an array");
+        }
+      } catch (err) {
+        console.log(
+          `[${startTime}] Invalid affiliatedLinks format:`,
+          err.message,
+          affiliatedLinks
+        );
+        return res
+          .status(400)
+          .json({ message: `Invalid affiliatedLinks format: ${err.message}` });
+      }
+
+      // Handle postDateTime
       let scheduledDate = null,
         scheduledTime = null;
       if (postDateTime) {
         const postDate = new Date(postDateTime);
+        if (isNaN(postDate.getTime())) {
+          console.log(
+            `[${startTime}] Invalid post date/time format:`,
+            postDateTime
+          );
+          return res
+            .status(400)
+            .json({ message: "Invalid post date/time format" });
+        }
         scheduledDate = postDate.toISOString().split("T")[0];
         scheduledTime = postDate.toTimeString().split(" ")[0];
       }
 
+      // Start a transaction
+      await pool.query("BEGIN");
+      console.log(`[${startTime}] Transaction started`);
+
+      // Database insertion
       const insertQuery = `
         INSERT INTO orders (
           user_id,
@@ -113,14 +237,14 @@ router.post("/place-order", authenticateToken, (req, res) => {
           coupon_code,
           post_datetime,
           file_url,
-          created_at,
           username,
           order_date,
           scheduled_date,
           scheduled_time,
           order_type,
           amount,
-          inf_name
+          inf_name,
+          status
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING *;
       `;
@@ -128,31 +252,52 @@ router.post("/place-order", authenticateToken, (req, res) => {
       const values = [
         userId,
         influencerId,
-        services.map((s) => JSON.stringify(s)), // Ensure services are stored as JSON
-        parseFloat(totalPrice),
+        JSON.stringify(parsedServices), // Store as JSONB
+        parsedTotalPrice,
         description || null,
-        affiliatedLinks || [], // Store affiliatedLinks as JSON array
+        JSON.stringify(parsedAffiliatedLinks), // Store as JSONB
         couponCode || null,
         postDateTime || null,
-        file_url,
-        new Date(),
-        frontendUsername,
+        fileUrl || null,
+        username,
         new Date(),
         scheduledDate,
         scheduledTime,
         type,
-        parseFloat(totalPrice),
+        parsedTotalPrice,
         influencer_name,
+        "Pending",
       ];
 
+      console.log(`[${startTime}] Executing query with values:`, values);
       const result = await pool.query(insertQuery, values);
+      console.log(`[${startTime}] Query executed, result:`, result.rows[0]);
+
+      // Commit transaction
+      await pool.query("COMMIT");
+      console.log(`[${startTime}] Transaction committed`);
+
+      res.status(201).json({
+        message: "Order placed successfully",
+        order: result.rows[0],
+      });
+    } catch (err) {
+      // Rollback transaction on error
+      await pool.query("ROLLBACK").catch((rollbackErr) => {
+        console.error(`[${startTime}] Rollback failed:`, rollbackErr.message);
+      });
+
+      console.error(`[${startTime}] Order processing error:`, {
+        message: err.message,
+        stack: err.stack,
+        orderData: orderData,
+        fileUrl: fileUrl,
+        timestamp: new Date().toISOString(),
+      });
 
       res
-        .status(200)
-        .json({ message: "Order placed successfully", order: result.rows[0] });
-    } catch (err) {
-      console.error("Order Insert Error:", err.message);
-      res.status(500).json({ message: "❌ Failed to place order" });
+        .status(500)
+        .json({ message: "❌ Failed to place order", error: err.message });
     }
   });
 
@@ -163,69 +308,59 @@ router.post("/place-order", authenticateToken, (req, res) => {
 
 // Get user orders, sorted by most recent first
 router.get("/orders", authenticateToken, async (req, res) => {
+  const startTime = new Date().toISOString(); // Timestamp for debugging
+  const userId = req.user.id;
+
   try {
-    const userId = req.user.id;
+    console.log(`[${startTime}] Fetching orders for user ID: ${userId}`);
 
-    let query = `
+    // Check database connection
+    await pool.query("SELECT 1");
+    console.log(`[${startTime}] Database connection successful`);
+
+    // Fetch orders where user is either the buyer or influencer
+    const query = `
       SELECT 
-        o.id,
-        o.user_id,
-        o.influencer_id,
-        o.username,
-        o.order_date,
-        o.scheduled_date,
-        o.scheduled_time,
-        o.services,
-        o.total_price AS amount,
-        o.description,
-        o.affiliated_links,
-        o.coupon_code,
-        o.file_url,
-        o.order_type,
-        o.created_at,
-        o.status,
-        o.inf_name
-      FROM orders o
-      WHERE o.user_id = $1 OR o.influencer_id = $1
-      ORDER BY o.created_at DESC
+        id,
+        user_id,
+        influencer_id,
+        services,
+        total_price AS amount,
+        description,
+        affiliated_links AS affiliatedLinks,
+        coupon_code AS couponCode,
+        post_datetime,
+        file_url AS file,
+        created_at AS orderDate,
+        username,
+        scheduled_date AS scheduledDate,
+        scheduled_time AS scheduledTime,
+        order_type AS orderType,
+        inf_name AS infName,
+        status
+      FROM orders
+      WHERE user_id = $1 OR influencer_id = $1
+      ORDER BY created_at DESC;
     `;
-    const values = [userId];
 
-    const result = await pool.query(query, values);
+    const result = await pool.query(query, [userId]);
+    console.log(`[${startTime}] Fetched ${result.rows.length} orders`);
 
-    const formattedOrders = result.rows.map((order) => {
-      const firstService =
-        order.services && order.services.length > 0
-          ? order.services[0]
-          : JSON.stringify({ name: "Custom Service", type: "General" });
-
-      return {
-        id: order.id,
-        userId: order.user_id,
-        influencerId: order.influencer_id,
-        username: order.username || "Unknown",
-        orderDate: order.order_date,
-        scheduledDate: order.scheduled_date
-          ? new Date(order.scheduled_date).toISOString().split("T")[0]
-          : null,
-        scheduledTime: order.scheduled_time,
-        type: order.order_type,
-        product: JSON.parse(firstService).name || "Custom Service",
-        amount: parseFloat(order.amount || 0),
-        orderType: order.order_type,
-        description: order.description,
-        affiliatedLinks: order.affiliated_links || [],
-        couponCode: order.coupon_code,
-        file: order.file_url,
-        status: order.status || "Pending",
-        infName: order.inf_name || "Unknown",
-      };
+    res.status(200).json({
+      message: "Orders fetched successfully",
+      orders: result.rows,
+    });
+  } catch (err) {
+    console.error(`[${startTime}] Error fetching orders:`, {
+      message: err.message,
+      stack: err.stack,
+      userId: userId,
+      timestamp: new Date().toISOString(),
     });
 
-    res.status(200).json({ orders: formattedOrders });
-  } catch (err) {
-    console.error("Error fetching orders:", err.message);
-    res.status(500).json({ message: "❌ Failed to fetch orders" });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch orders", error: err.message });
   }
 });
 
