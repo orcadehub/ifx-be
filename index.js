@@ -47,6 +47,7 @@ app.get("/", (req, res) => {
 });
 
 // ✅ Setup Socket.IO with HTTP server
+// ✅ Setup Socket.IO with HTTP server
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -63,7 +64,7 @@ io.on("connection", (socket) => {
   // Join user-specific room
   socket.on("join", (userId) => {
     socket.join(`user-${userId}`);
-    console.log(`User ${userId} joined room user-${userId}`);
+    // console.log(`User ${userId} joined room user-${userId}`);
   });
 
   // Handle message sending
