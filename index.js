@@ -4,7 +4,7 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-import pool from "./config/db.js";
+import pool from "./config/db.js"; // ✅ Make sure this is your PostgreSQL pool
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -17,22 +17,20 @@ import fbRouters from "./routes/fb_routes.js";
 import googleAuthRoutes from "./routes/google_routes.js";
 import fileRoutes from "./routes/file_route.js";
 import paymentRoutes from "./routes/payment_route.js";
-
 dotenv.config();
 
 const app = express();
 
-// CORS Middleware
+// ✅ Middleware
 app.use(
   cors({
-    origin: ["https://ifx-be-orcadehubs-projects.vercel.app", "http://localhost:5173"],
-    methods: ["GET", "POST"],
+    origin: ["https://www.influexkonnect.com", "http://localhost:5173"], // ✅ Remove trailing slash
     credentials: true,
   })
 );
 app.use(express.json());
 
-// Routes
+// ✅ Routes
 app.use("/api", authRoutes);
 app.use("/api", dataDeletionRoutes);
 app.use("/api", chatRoute);
@@ -48,84 +46,49 @@ app.get("/", (req, res) => {
   res.send("🚀 Server is working");
 });
 
-// Setup HTTP server (Render handles HTTPS automatically)
+// ✅ Setup Socket.IO with HTTP server
 const server = http.createServer(app);
-
-// Setup Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: ["https://ifx-be-orcadehubs-projects.vercel.app", "http://localhost:5173"],
+    origin: ["https://www.influexkonnect.com", "http://localhost:5173"],
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ["websocket", "polling"], // Allow polling as fallback
 });
 
-// Socket.IO Logic
+// ✅ Socket.IO Logic
 io.on("connection", (socket) => {
   console.log("🟢 Socket connected:", socket.id);
 
-  // Middleware to verify token
-  socket.use((packet, next) => {
-    const token = socket.handshake.auth.token;
-    if (!token) {
-      console.error("No token provided for socket:", socket.id);
-      return next(new Error("Authentication error: No token provided"));
-    }
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      socket.user = decoded;
-      next();
-    } catch (err) {
-      console.error("Invalid token for socket:", socket.id, err.message);
-      next(new Error("Authentication error: Invalid token"));
-    }
-  });
-
-  // Error handler
-  socket.on("error", (err) => {
-    console.error("Socket error:", socket.id, err.message);
-    socket.emit("error", { message: err.message });
-  });
-
   // Join user-specific room
   socket.on("join", (userId) => {
-    if (socket.user.id !== userId) {
-      console.error("User ID mismatch for socket:", socket.id);
-      return socket.emit("error", { message: "User ID mismatch" });
-    }
     socket.join(`user-${userId}`);
     console.log(`User ${userId} joined room user-${userId}`);
   });
 
   // Handle message sending
-  socket.on("send_message", async ({ to, content, tempId, token }, callback) => {
+  socket.on("send_message", async ({ to, content, token }) => {
     try {
-      if (!to || !content || !tempId) {
-        console.error("Missing required fields for socket:", socket.id);
-        return callback({ error: "Missing required fields" });
-      }
+      if (!token || !to || !content) return;
 
-      const from = socket.user.id;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const from = decoded.id;
 
       const result = await pool.query(
-        "INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1, $2, $3) RETURNING id, timestamp",
+        "INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1, $2, $3) RETURNING id",
         [from, to, content]
       );
 
       const messageId = result.rows[0].id;
-      const timestamp = result.rows[0].timestamp;
-      const message = { id: messageId, from, to, text: content, tempId, timestamp };
+      const message = { id: messageId, from, to, text: content };
 
       // Emit to both sender and receiver
       io.to(`user-${from}`).emit("new_message", message);
       io.to(`user-${to}`).emit("new_message", message);
 
       console.log("📩 Message sent via socket:", message);
-      callback({ success: true, message });
     } catch (err) {
-      console.error("❌ Error sending message via socket:", socket.id, err.message);
-      callback({ error: err.message });
+      console.error("❌ Error sending message via socket:", err.message);
     }
   });
 
@@ -134,8 +97,8 @@ io.on("connection", (socket) => {
   });
 });
 
-// Start Server
+// ✅ Start Server
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () =>
-  console.log(`✅ Server running on ${process.env.NODE_ENV === "production" ? "https" : "http"}://localhost:${PORT}`)
+  console.log(`✅ Server running on http://localhost:${PORT}`)
 );
