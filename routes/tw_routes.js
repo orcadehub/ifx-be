@@ -9,23 +9,15 @@ import fetch from "node-fetch";
 dotenv.config();
 const router = express.Router();
 
+// In-memory store for state and code verifier (not suitable for production)
+const authStore = new Map();
+
 // Helper functions for PKCE
 const genCodeVerifier = () => base64url(crypto.randomBytes(32));
 const genCodeChallenge = async (verifier) => {
   const hashed = crypto.createHash("sha256").update(verifier).digest();
   return base64url(hashed);
 };
-
-// Helper functions for temporary cookies
-const setTempCookie = (res, name, value) => {
-  res.cookie(name, value, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 15 * 60 * 1000, // 15 minutes
-    sameSite: "lax",
-  });
-};
-const getTempCookie = (req, name) => req.cookies[name];
 
 // Step 1: Initiate Twitter OAuth2 - Redirect to Twitter for user permission
 router.get("/auth/twitter", async (req, res) => {
@@ -34,14 +26,19 @@ router.get("/auth/twitter", async (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: "User ID is required to connect Twitter account." });
     }
+    console.log("Initiating Twitter auth with userId:", userId);
 
-    const state = `${base64url(crypto.randomBytes(16))}.${encodeURIComponent(userId)}`;
+    const stateData = {
+      random: base64url(crypto.randomBytes(16)),
+      userId: userId,
+    };
+    const state = base64url(JSON.stringify(stateData));
+
     const code_verifier = genCodeVerifier();
     const code_challenge = await genCodeChallenge(code_verifier);
 
-    // Store code verifier and state in temporary cookies
-    setTempCookie(res, "tw_cv", code_verifier);
-    setTempCookie(res, "tw_state", state);
+    // Store state and code verifier in memory (expires in 15 minutes)
+    authStore.set(state, { code_verifier, expires: Date.now() + 15 * 60 * 1000 });
 
     // Construct Twitter OAuth2 authorization URL
     const params = new URLSearchParams({
@@ -69,19 +66,25 @@ router.get("/auth/twitter", async (req, res) => {
 router.get("/auth/twitter/callback", async (req, res) => {
   try {
     const { code, state } = req.query;
-    const storedState = getTempCookie(req, "tw_state");
-    const code_verifier = getTempCookie(req, "tw_cv");
 
-    // Validate state and code verifier
-    if (!storedState || !code_verifier || storedState !== state) {
+    // Retrieve and validate stored state and code verifier
+    const storedData = authStore.get(state);
+    if (!storedData || storedData.expires < Date.now()) {
+      authStore.delete(state); // Clean up expired/invalid state
       return res.status(400).json({ error: "Invalid or expired state/verifier. Please try connecting again." });
     }
 
-    // Extract userId from state
-    const userId = decodeURIComponent((state || "").split(".")[1]);
+    const { code_verifier } = storedData;
+    authStore.delete(state); // Clean up after use
+
+    // Parse state to extract userId
+    const decodedState = base64url.decode(state);
+    const stateDataParsed = JSON.parse(decodedState);
+    const userId = stateDataParsed.userId;
     if (!userId) {
       return res.status(400).json({ error: "Invalid user ID in state." });
     }
+    console.log("Callback received with userId:", userId);
 
     // Exchange authorization code for access token
     const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
@@ -135,7 +138,6 @@ router.get("/auth/twitter/callback", async (req, res) => {
 
     const twId = twProfile.id;
     const name = twProfile.name || twProfile.username;
-    const email = `${twId}@twitter.com`; // Synthetic email as email access requires elevated permissions
     const profilePic = twProfile.profile_image_url || "";
 
     // Fetch recent tweets
@@ -156,27 +158,25 @@ router.get("/auth/twitter/callback", async (req, res) => {
       console.warn("Failed to fetch Twitter posts:", postErr.message);
     }
 
-    // Update user in database
+    // Update user in database using userId as email
+    console.log("Updating database with email:", userId);
     const result = await pool.query(
       `UPDATE users 
-       SET twitter_id = $1, 
-           twitter_username = $2, 
-           twitter_profile_pic = $3, 
-           twitter_access_token = $4,
+       SET tw_id = $1, 
+           tw_username = $2, 
+           tw_profile_pic = $3, 
+           tw_access_token = $4,
            data = jsonb_set(COALESCE(data, '{}'::jsonb), '{twitter}', to_jsonb($5::json), true),
            posts = jsonb_set(COALESCE(posts, '{}'::jsonb), '{twitter}', to_jsonb($6::json), true)
        WHERE email = $7
        RETURNING *`,
-      [twId, twProfile.username, profilePic, access_token, twProfile, twPosts, email]
+      [twId, twProfile.username, profilePic, access_token, twProfile, twPosts, userId]
     );
 
     if (result.rowCount === 0) {
+      console.error("No user found with email:", userId);
       return res.status(404).json({ error: "User not found. Please ensure the user ID is correct." });
     }
-
-    // Clear temporary cookies
-    res.clearCookie("tw_cv");
-    res.clearCookie("tw_state");
 
     // Redirect to frontend dashboard
     res.redirect(`${process.env.FRONTEND_URL}/dashboard/settings?twitter_connected=true`);
