@@ -35,7 +35,7 @@ router.get("/auth/twitter", async (req, res) => {
 
     const params = new URLSearchParams({
       response_type: "code",
-      client_id: process.env.TW_CLIENT_ID,
+      client_id: process.env.TWITTER_CLIENT_ID,
       redirect_uri: process.env.TW_REDIRECT_URI,
       scope: ["users.read", "tweet.read", "offline.access"].join(" "),
       state,
@@ -69,7 +69,7 @@ router.get("/auth/twitter/callback", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: process.env.TW_CLIENT_ID,
+        client_id: process.env.TWITTER_CLIENT_ID,
         grant_type: "authorization_code",
         code,
         redirect_uri: process.env.TW_REDIRECT_URI,
