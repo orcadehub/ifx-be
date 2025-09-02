@@ -13,10 +13,15 @@ import chatRoute from "./routes/chat_route.js";
 import otpRoute from "./routes/otp_route.js";
 import userRoutes from "./routes/user_route.js";
 import fbRoute from "./routes/fb_login.js";
+import twRoute from "./routes/tw_routes.js";
 import fbRouters from "./routes/fb_routes.js";
-import googleAuthRoutes from "./routes/google_routes.js";
+import googleRoute from "./routes/google_login.js";
+import googleRouters from "./routes/google_routes.js";
 import fileRoutes from "./routes/file_route.js";
 import paymentRoutes from "./routes/payment_route.js";
+import offerRoutes from "./routes/offers_route.js";
+import Newsetter from "./routes/newsletterRoutes.js";
+
 dotenv.config();
 
 const app = express();
@@ -36,11 +41,15 @@ app.use("/api", dataDeletionRoutes);
 app.use("/api", chatRoute);
 app.use("/api", otpRoute);
 app.use("/api", fbRoute);
+app.use("/api", twRoute);
 app.use("/api/connect", fbRouters);
 app.use("/api", fileRoutes);
 app.use("/api", paymentRoutes);
 app.use("/api", userRoutes);
-app.use("/api", googleAuthRoutes);
+app.use("/api", googleRoute);
+app.use("/api/connect", googleRouters);
+app.use("/api", offerRoutes);
+app.use("/api/newsletter", Newsetter);
 
 app.get("/", (req, res) => {
   res.send("🚀 Server is working");

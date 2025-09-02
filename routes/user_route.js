@@ -182,6 +182,65 @@ router.get("/influencers", authenticateToken, async (req, res) => {
   }
 });
 
+// GET /wishlist
+router.get("/wishlist", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id; // from JWT
+    // 1. Get the wishlist array for this user
+    const userResult = await pool.query(
+      `SELECT wishlist 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const wishlist = userResult.rows[0].wishlist || [];
+    if (wishlist.length === 0) {
+      return res.status(200).json([]); // No influencers
+    }
+
+    // 2. Fetch influencers by IDs in wishlist
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         fullname AS name, 
+         email, 
+         profile_pic, 
+         data
+       FROM users
+       WHERE id = ANY($1) AND role = 'influencer'`,
+      [wishlist]
+    );
+
+    const influencers = result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      profilePic: row.profile_pic || "https://via.placeholder.com/100x100",
+      data: row.data || {
+        totalCampaigns: 0,
+        avgLikes: 0,
+        avgViews: "0",
+        avgReach: "0",
+        engagement: "0%",
+        avgComments: 0,
+        avgShares: 0,
+        fakeFollowers: "0%",
+      },
+    }));
+
+    res.status(200).json(influencers);
+  } catch (err) {
+    console.error("❌ Error fetching wishlist influencers:", err);
+    res.status(500).json({ message: "❌ Failed to fetch wishlist influencers." });
+  }
+});
+
+
 // GET user by email
 router.get("/user-details/:email", async (req, res) => {
   const { email } = req.params;

@@ -141,5 +141,42 @@ CREATE TABLE service_requests (
   created_at TIMESTAMP NOT NULL
 );
 
+*************** offers table ******************
+CREATE TABLE promotions (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(255) NOT NULL,
+    campaign_id VARCHAR(255) NOT NULL,
+    unique_url TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE clicks (
+    id SERIAL PRIMARY KEY,
+    promotion_id INTEGER REFERENCES promotions(id) ON DELETE CASCADE,
+    ip_address VARCHAR(45) NOT NULL,  -- Supports IPv4 and IPv6
+    clicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (promotion_id, ip_address)  -- Ensures no duplicate IPs per promotion
+);
+
+
+ALTER TABLE promotions
+ADD COLUMN promotion_name VARCHAR(255),
+ADD COLUMN status BOOLEAN DEFAULT TRUE;
+
+
+************ NEWS SETTER *********************
+
+CREATE TABLE IF NOT EXISTS newsletter (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  subscribed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  source TEXT NOT NULL DEFAULT 'footer',
+  ip INET,
+  user_agent TEXT,
+  status TEXT NOT NULL DEFAULT 'subscribed' CHECK (status IN ('subscribed','unsubscribed','bounced','pending'))
+);
+
+
+
 
 CLOUDINARY_URL=cloudinary://491314846178849:Z8tdIsOP4Gc53qDw_Cm1lCbkO4I@deq5tid6g
