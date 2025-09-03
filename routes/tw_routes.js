@@ -5,23 +5,12 @@ import pool from "../config/db.js";
 import crypto from "crypto";
 import base64url from "base64url";
 import fetch from "node-fetch";
-import winston from "winston";
 
 dotenv.config();
 const router = express.Router();
 
-// Configure logger
-const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "debug",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: "logs/twitterAuth.log" })
-  ],
-});
+// In-memory store for state and code verifier (not suitable for production)
+const authStore = new Map();
 
 // Helper functions for PKCE
 const genCodeVerifier = () => base64url(crypto.randomBytes(32));
@@ -30,48 +19,14 @@ const genCodeChallenge = async (verifier) => {
   return base64url(hashed);
 };
 
-// Initialize auth_states table (run this once during app setup)
-const initAuthTable = async () => {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS auth_states (
-        state VARCHAR(255) PRIMARY KEY,
-        code_verifier VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        expires BIGINT NOT NULL
-      )
-    `);
-    logger.info("auth_states table initialized successfully");
-  } catch (err) {
-    logger.error("Failed to initialize auth_states table:", err.message);
-    throw err;
-  }
-};
-
-// Clean up expired states (run periodically, e.g., via a cron job)
-const cleanupExpiredStates = async () => {
-  try {
-    await pool.query(`
-      DELETE FROM auth_states WHERE expires < $1
-    `, [Date.now()]);
-    logger.info("Cleaned up expired auth states");
-  } catch (err) {
-    logger.error("Failed to clean up expired auth states:", err.message);
-  }
-};
-
-// Run table initialization on startup
-initAuthTable().catch((err) => logger.error("Initialization error:", err.message));
-
 // Step 1: Initiate Twitter OAuth2 - Redirect to Twitter for user permission
 router.get("/auth/twitter", async (req, res) => {
   try {
     const { userId } = req.query;
     if (!userId) {
-      logger.warn("Missing userId in /auth/twitter request");
       return res.status(400).json({ error: "User ID is required to connect Twitter account." });
     }
-    logger.info(`Initiating Twitter auth with userId: ${userId}`);
+    console.log("Initiating Twitter auth with userId:", userId);
 
     const stateData = {
       random: base64url(crypto.randomBytes(16)),
@@ -82,30 +37,27 @@ router.get("/auth/twitter", async (req, res) => {
     const code_verifier = genCodeVerifier();
     const code_challenge = await genCodeChallenge(code_verifier);
 
-    // Store state and code verifier in database
-    await pool.query(`
-      INSERT INTO auth_states (state, code_verifier, user_id, expires)
-      VALUES ($1, $2, $3, $4)
-    `, [state, code_verifier, userId, Date.now() + 15 * 60 * 1000]);
+    // Store state and code verifier in memory (expires in 15 minutes)
+    authStore.set(state, { code_verifier, expires: Date.now() + 15 * 60 * 1000 });
 
     // Construct Twitter OAuth2 authorization URL
     const params = new URLSearchParams({
       response_type: "code",
-      client_id: process.env.TWITTER_CLIENT_ID,
-      redirect_uri: process.env.TW_REDIRECT_URI,
-      scope: ["users.read", "tweet.read", "offline.access"].join(" "),
+      client_id: process.env.TWITTER_CLIENT_ID, // TkVHSlFKWThDR2NjWDFjNk9VQjk6MTpjaQ
+      redirect_uri: process.env.TW_REDIRECT_URI, // http://localhost:4000/api/auth/twitter/callback
+      scope: ["users.read", "tweet.read", "offline.access"].join(" "), // Scopes for profile and tweets
       state,
       code_challenge,
       code_challenge_method: "S256",
     }).toString();
 
     const authorizeUrl = `https://twitter.com/i/oauth2/authorize?${params}`;
-    res.redirect(authorizeUrl);
+    res.redirect(authorizeUrl); // Redirect to Twitter for user to grant permission
   } catch (err) {
-    logger.error("Twitter Auth Initiation Error:", err.message);
+    console.error("Twitter Auth Initiation Error:", err.message);
     res.status(500).json({
       error: "Failed to initiate Twitter account connection.",
-      details: process.env.NODE_ENV === "production" ? "Internal server error" : err.message,
+      details: err.message,
     });
   }
 });
@@ -116,25 +68,23 @@ router.get("/auth/twitter/callback", async (req, res) => {
     const { code, state } = req.query;
 
     // Retrieve and validate stored state and code verifier
-    const result = await pool.query(`
-      SELECT code_verifier, user_id FROM auth_states
-      WHERE state = $1 AND expires > $2
-    `, [state, Date.now()]);
-
-    if (result.rows.length === 0) {
-      await pool.query(`DELETE FROM auth_states WHERE state = $1`, [state]);
-      logger.warn(`Invalid or expired state: ${state}`);
+    const storedData = authStore.get(state);
+    if (!storedData || storedData.expires < Date.now()) {
+      authStore.delete(state); // Clean up expired/invalid state
       return res.status(400).json({ error: "Invalid or expired state/verifier. Please try connecting again." });
     }
 
-    const { code_verifier, user_id: userId } = result.rows[0];
-    await pool.query(`DELETE FROM auth_states WHERE state = $1`, [state]); // Clean up after use
+    const { code_verifier } = storedData;
+    authStore.delete(state); // Clean up after use
 
+    // Parse state to extract userId
+    const decodedState = base64url.decode(state);
+    const stateDataParsed = JSON.parse(decodedState);
+    const userId = stateDataParsed.userId;
     if (!userId) {
-      logger.warn("Invalid user ID in state");
       return res.status(400).json({ error: "Invalid user ID in state." });
     }
-    logger.info(`Callback received with userId: ${userId}`);
+    console.log("Callback received with userId:", userId);
 
     // Exchange authorization code for access token
     const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
@@ -148,17 +98,17 @@ router.get("/auth/twitter/callback", async (req, res) => {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: process.env.TW_REDIRECT_URI,
+        redirect_uri: process.env.TW_REDIRECT_URI, // http://localhost:4000/api/auth/twitter/callback
         code_verifier,
       }),
     });
 
     if (!tokenRes.ok) {
       const errorText = await tokenRes.text();
-      logger.error("Twitter Token Exchange Error:", errorText);
+      console.error("Twitter Token Exchange Error:", errorText);
       return res.status(tokenRes.status).json({
         error: "Failed to obtain Twitter access token.",
-        details: process.env.NODE_ENV === "production" ? "Token exchange failed" : errorText,
+        details: errorText,
       });
     }
 
@@ -174,16 +124,15 @@ router.get("/auth/twitter/callback", async (req, res) => {
 
     if (!profileRes.ok) {
       const errorText = await profileRes.text();
-      logger.error("Twitter Profile Fetch Error:", errorText);
+      console.error("Twitter Profile Fetch Error:", errorText);
       return res.status(profileRes.status).json({
         error: "Failed to retrieve Twitter profile data.",
-        details: process.env.NODE_ENV === "production" ? "Profile fetch failed" : errorText,
+        details: errorText,
       });
     }
 
     const { data: twProfile } = await profileRes.json();
     if (!twProfile?.id || !twProfile?.username) {
-      logger.warn("Incomplete Twitter profile data");
       return res.status(400).json({ error: "Incomplete Twitter profile data." });
     }
 
@@ -203,15 +152,15 @@ router.get("/auth/twitter/callback", async (req, res) => {
       if (postsRes.ok) {
         twPosts = await postsRes.json();
       } else {
-        logger.warn("Twitter Posts Fetch Warning:", await postsRes.text());
+        console.warn("Twitter Posts Fetch Warning:", await postsRes.text());
       }
     } catch (postErr) {
-      logger.warn("Failed to fetch Twitter posts:", postErr.message);
+      console.warn("Failed to fetch Twitter posts:", postErr.message);
     }
 
-    // Update user in database
-    logger.info(`Updating database with email: ${userId}`);
-    const resultUpdate = await pool.query(
+    // Update user in database using userId as email
+    console.log("Updating database with email:", userId);
+    const result = await pool.query(
       `UPDATE users 
        SET tw_id = $1, 
            tw_username = $2, 
@@ -224,26 +173,20 @@ router.get("/auth/twitter/callback", async (req, res) => {
       [twId, twProfile.username, profilePic, access_token, twProfile, twPosts, userId]
     );
 
-    if (resultUpdate.rowCount === 0) {
-      logger.error(`No user found with email: ${userId}`);
+    if (result.rowCount === 0) {
+      console.error("No user found with email:", userId);
       return res.status(404).json({ error: "User not found. Please ensure the user ID is correct." });
     }
 
     // Redirect to frontend dashboard
-    const redirectUrl = process.env.NODE_ENV === "production"
-      ? `${process.env.FRONTEND_URL}/dashboard/settings?twitter_connected=true`
-      : `http://localhost:3000/dashboard/settings?twitter_connected=true`;
-    res.redirect(redirectUrl);
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard/settings?twitter_connected=true`);
   } catch (err) {
-    logger.error("Twitter Callback Error:", err.message);
+    console.error("Twitter Callback Error:", err.message);
     res.status(500).json({
       error: "Failed to connect Twitter account.",
-      details: process.env.NODE_ENV === "production" ? "Internal server error" : err.message,
+      details: err.message,
     });
   }
 });
-
-// Periodically clean up expired states (e.g., every 10 minutes)
-setInterval(cleanupExpiredStates, 10 * 60 * 1000);
 
 export default router;
