@@ -232,7 +232,7 @@ router.get("/auth/twitter/callback", async (req, res) => {
     // Redirect to frontend dashboard
     const redirectUrl = process.env.NODE_ENV === "production"
       ? `${process.env.FRONTEND_URL}/dashboard/settings?twitter_connected=true`
-      : `http://localhost:5173/dashboard/settings?twitter_connected=true`;
+      : `http://localhost:3000/dashboard/settings?twitter_connected=true`;
     res.redirect(redirectUrl);
   } catch (err) {
     logger.error("Twitter Callback Error:", err.message);

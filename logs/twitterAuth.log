@@ -14,3 +14,5 @@
 {"level":"info","message":"Callback received with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:54:16.159Z"}
 {"level":"warn","message":"Twitter Posts Fetch Warning:","timestamp":"2025-09-03T08:54:17.879Z"}
 {"level":"info","message":"Updating database with email: influexkonnect@gmail.com","timestamp":"2025-09-03T08:54:17.879Z"}
+{"level":"info","message":"Cleaned up expired auth states","timestamp":"2025-09-03T09:03:47.821Z"}
+{"level":"info","message":"auth_states table initialized successfully","timestamp":"2025-09-03T09:10:06.397Z"}
