@@ -1,0 +1,16 @@
+{"level":"info","message":"auth_states table initialized successfully","timestamp":"2025-09-03T08:51:07.258Z"}
+{"level":"info","message":"Initiating Twitter auth with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:51:17.312Z"}
+{"level":"info","message":"Callback received with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:51:23.263Z"}
+{"level":"info","message":"Updating database with email: influexkonnect@gmail.com","timestamp":"2025-09-03T08:51:25.050Z"}
+{"level":"info","message":"Initiating Twitter auth with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:53:05.629Z"}
+{"level":"info","message":"Initiating Twitter auth with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:53:07.749Z"}
+{"level":"info","message":"auth_states table initialized successfully","timestamp":"2025-09-03T08:53:07.964Z"}
+{"level":"info","message":"Initiating Twitter auth with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:53:17.711Z"}
+{"level":"info","message":"Callback received with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:53:22.381Z"}
+{"level":"warn","message":"Twitter Posts Fetch Warning:","timestamp":"2025-09-03T08:53:24.246Z"}
+{"level":"info","message":"Updating database with email: influexkonnect@gmail.com","timestamp":"2025-09-03T08:53:24.247Z"}
+{"level":"info","message":"auth_states table initialized successfully","timestamp":"2025-09-03T08:53:49.810Z"}
+{"level":"info","message":"Initiating Twitter auth with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:54:11.312Z"}
+{"level":"info","message":"Callback received with userId: influexkonnect@gmail.com","timestamp":"2025-09-03T08:54:16.159Z"}
+{"level":"warn","message":"Twitter Posts Fetch Warning:","timestamp":"2025-09-03T08:54:17.879Z"}
+{"level":"info","message":"Updating database with email: influexkonnect@gmail.com","timestamp":"2025-09-03T08:54:17.879Z"}
