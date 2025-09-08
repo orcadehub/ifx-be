@@ -177,6 +177,114 @@ CREATE TABLE IF NOT EXISTS newsletter (
 );
 
 
+-- Create influencer_metrics table to store metrics
+CREATE TABLE IF NOT EXISTS influencer_metrics (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    inf_id INTEGER NOT NULL,
+    earnings DECIMAL(15, 2) DEFAULT 0.00,
+    total_orders INTEGER DEFAULT 0,
+    active_campaigns INTEGER DEFAULT 0,
+    total_campaigns INTEGER DEFAULT 0,
+    connected_influencers INTEGER DEFAULT 0,
+    total_posts INTEGER DEFAULT 0,
+    reels INTEGER DEFAULT 0,
+    videos INTEGER DEFAULT 0,
+    stories INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_inf_id FOREIGN KEY (inf_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT unique_user_inf UNIQUE (user_id, inf_id)
+);
+
+
+****************```-- Create influencer_metrics table to store metrics
+CREATE TABLE influencer_metrics (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    earnings DECIMAL(15, 2) DEFAULT 0.00,
+    total_orders INTEGER DEFAULT 0,
+    active_campaigns INTEGER DEFAULT 0,
+    total_campaigns INTEGER DEFAULT 0,
+    connected_influencers INTEGER DEFAULT 0,
+    total_posts INTEGER DEFAULT 0,
+    reels INTEGER DEFAULT 0,
+    videos INTEGER DEFAULT 0,
+    stories INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+```
+
+************* PRICES ******************** 
+
+CREATE TABLE IF NOT EXISTS prices (
+  user_id    BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  prices     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  currency   TEXT   NOT NULL DEFAULT 'INR',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT prices_valid_json CHECK (jsonb_typeof(prices) = 'object')
+);
+
+
 
 
 CLOUDINARY_URL=cloudinary://491314846178849:Z8tdIsOP4Gc53qDw_Cm1lCbkO4I@deq5tid6g
+
+
+
+
+CREATE TABLE IF NOT EXISTS team_members (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Create support_tickets table
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'open', -- e.g., open, closed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Create campaigns table
+CREATE TABLE IF NOT EXISTS campaigns (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'active', -- e.g., active, completed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Create transactions table
+CREATE TABLE IF NOT EXISTS transactions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Create withdrawals table
+CREATE TABLE IF NOT EXISTS withdrawals (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending', -- e.g., pending, approved
+    amount DECIMAL(15, 2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Create service_orders table
+CREATE TABLE IF NOT EXISTS service_orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+```

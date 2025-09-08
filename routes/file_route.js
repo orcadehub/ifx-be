@@ -16,63 +16,77 @@ cloudinary.config({
 // Place a new order
 router.post("/place-order", authenticateToken, async (req, res) => {
   const busboy = Busboy({ headers: req.headers });
-  const startTime = new Date().toISOString(); // Timestamp for debugging
+  const startTime = new Date().toISOString();
 
   let orderData = {};
-  let fileUrl = null;
+  const uploadPromises = []; // collect all uploads
+  const uploadedUrls = []; // resulting secure_url list (keep single too)
 
   busboy.on("field", (fieldname, val) => {
     try {
       if (["services", "affiliatedLinks"].includes(fieldname)) {
-        orderData[fieldname] = JSON.parse(val); // Parse JSON fields
+        orderData[fieldname] = JSON.parse(val);
       } else {
         orderData[fieldname] = val;
       }
-      console.log(`[${startTime}] Field [${fieldname}]:`, val); // Debug log with timestamp
+      console.log(`[${startTime}] Field [${fieldname}]:`, val);
     } catch (err) {
       console.error(
         `[${startTime}] Error parsing field [${fieldname}]: ${err.message}`
       );
-      orderData[fieldname] = val; // Fallback to raw value
+      orderData[fieldname] = val;
     }
   });
 
-  busboy.on("file", (fieldname, file, filename) => {
-    const safeFilename = filename
-      ? filename.toString().split(".")[0]
-      : `uploaded_file_${Date.now()}`;
-    const uploadPromise = new Promise((resolve, reject) => {
+  busboy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+    const baseName = (
+      filename ? filename.toString() : `uploaded_file_${Date.now()}`
+    ).replace(/\.[^/.]+$/g, "");
+    // Map mimetype -> Cloudinary resource_type
+    const resource_type = mimetype?.startsWith("image/")
+      ? "image"
+      : mimetype?.startsWith("video/") || mimetype === "audio/mpeg"
+      ? "video"
+      : "raw";
+
+    const uploadP = new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          resource_type: "raw",
           folder: "orders",
-          public_id: safeFilename,
+          public_id: baseName,
           overwrite: true,
+          resource_type, // correct type
         },
         (err, result) => {
           if (err) {
             console.error(`[${startTime}] Cloudinary upload error:`, err);
             return reject(err);
           }
+          console.log(
+            `[${startTime}] File uploaded successfully: ${result?.secure_url}`
+          );
+          uploadedUrls.push(result.secure_url);
           resolve(result.secure_url);
         }
       );
+      file.on("limit", () => {
+        stream.destroy(new Error("File size limit reached"));
+      });
       file.pipe(stream);
     });
 
-    uploadPromise
-      .then((url) => {
-        fileUrl = url;
-        console.log(`[${startTime}] File uploaded successfully: ${url}`);
-      })
-      .catch((err) => {
-        console.error(`[${startTime}] File upload failed: ${err.message}`);
-      });
+    uploadPromises.push(uploadP);
   });
 
   busboy.on("finish", async () => {
     try {
-      console.log(`[${startTime}] Processing order data:`, orderData); // Log received data
+      // Wait for all uploads to finish BEFORE using fileUrl
+      if (uploadPromises.length) {
+        await Promise.all(uploadPromises);
+      }
+      const fileUrl = uploadedUrls || null; // single file use-case; extend if you store multiple
+
+      console.log(`[${startTime}] Processing order data:`, orderData);
       const {
         userId,
         influencerId,
@@ -87,7 +101,6 @@ router.post("/place-order", authenticateToken, async (req, res) => {
         influencer_name,
       } = orderData;
 
-      // Validate required fields with fallback for totalPrice
       if (!userId || !influencerId || !services || !type || !influencer_name) {
         console.log(`[${startTime}] Validation failed - Missing fields:`, {
           userId,
@@ -99,19 +112,19 @@ router.post("/place-order", authenticateToken, async (req, res) => {
         });
         return res.status(400).json({
           message:
-            "Missing required fields: userId, influencerId, services, totalPrice, type, or influencer_name",
+            "Missing required fields: userId, influencerId, services, type, or influencer_name",
         });
       }
 
-      // Calculate totalPrice if not provided (fallback)
+      // totalPrice fallback
       let parsedTotalPrice = parseFloat(totalPrice);
       if (isNaN(parsedTotalPrice) || parsedTotalPrice < 0) {
         let calculatedTotalPrice = 0;
         try {
-          const parsedServices = Array.isArray(services)
+          const parsedServicesTmp = Array.isArray(services)
             ? services
             : JSON.parse(services);
-          calculatedTotalPrice = parsedServices.reduce(
+          calculatedTotalPrice = parsedServicesTmp.reduce(
             (sum, s) => sum + (parseFloat(s.price) || 0),
             0
           );
@@ -128,7 +141,6 @@ router.post("/place-order", authenticateToken, async (req, res) => {
         );
       }
 
-      // Validate user authorization
       if (userId != req.user.id) {
         console.log(`[${startTime}] Unauthorized user ID mismatch:`, {
           userId,
@@ -139,7 +151,6 @@ router.post("/place-order", authenticateToken, async (req, res) => {
           .json({ message: "Unauthorized user ID mismatch" });
       }
 
-      // Check database connection
       try {
         await pool.query("SELECT 1");
         console.log(`[${startTime}] Database connection successful`);
@@ -151,19 +162,17 @@ router.post("/place-order", authenticateToken, async (req, res) => {
         return res.status(500).json({ message: "Database connection failed" });
       }
 
-      // Check if influencer exists
       const userQuery = `SELECT username FROM users WHERE id = $1`;
       const userResult = await pool.query(userQuery, [influencerId]);
-      if (!userResult.rows[0]) {
+      if (!userResult.rows) {
         console.log(
           `[${startTime}] Influencer not found for ID:`,
           influencerId
         );
         return res.status(404).json({ message: "Influencer not found" });
       }
-      const username = userResult.rows[0].username || frontendUsername;
+      const username = userResult.rows.username || frontendUsername;
 
-      // Validate services
       let parsedServices = [];
       try {
         parsedServices = Array.isArray(services)
@@ -183,7 +192,6 @@ router.post("/place-order", authenticateToken, async (req, res) => {
           .json({ message: `Invalid services format: ${err.message}` });
       }
 
-      // Validate affiliatedLinks
       let parsedAffiliatedLinks = [];
       try {
         parsedAffiliatedLinks = Array.isArray(affiliatedLinks)
@@ -203,7 +211,7 @@ router.post("/place-order", authenticateToken, async (req, res) => {
           .json({ message: `Invalid affiliatedLinks format: ${err.message}` });
       }
 
-      // Handle postDateTime
+      // Schedule split
       let scheduledDate = null,
         scheduledTime = null;
       if (postDateTime) {
@@ -217,15 +225,13 @@ router.post("/place-order", authenticateToken, async (req, res) => {
             .status(400)
             .json({ message: "Invalid post date/time format" });
         }
-        scheduledDate = postDate.toISOString().split("T")[0];
-        scheduledTime = postDate.toTimeString().split(" ")[0];
+        scheduledDate = postDate.toISOString().split("T");
+        scheduledTime = postDate.toTimeString().split(" ");
       }
 
-      // Start a transaction
       await pool.query("BEGIN");
       console.log(`[${startTime}] Transaction started`);
 
-      // Database insertion
       const insertQuery = `
         INSERT INTO orders (
           user_id,
@@ -245,20 +251,20 @@ router.post("/place-order", authenticateToken, async (req, res) => {
           amount,
           inf_name,
           status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         RETURNING *;
       `;
 
       const values = [
         userId,
         influencerId,
-        JSON.stringify(parsedServices), // Store as JSONB
+        JSON.stringify(parsedServices),
         parsedTotalPrice,
         description || null,
-        JSON.stringify(parsedAffiliatedLinks), // Store as JSONB
+        JSON.stringify(parsedAffiliatedLinks),
         couponCode || null,
         postDateTime || null,
-        fileUrl || null,
+        fileUrl || null, // now resolved
         username,
         new Date(),
         scheduledDate,
@@ -271,30 +277,23 @@ router.post("/place-order", authenticateToken, async (req, res) => {
 
       console.log(`[${startTime}] Executing query with values:`, values);
       const result = await pool.query(insertQuery, values);
-      console.log(`[${startTime}] Query executed, result:`, result.rows[0]);
-
-      // Commit transaction
       await pool.query("COMMIT");
       console.log(`[${startTime}] Transaction committed`);
 
-      res.status(201).json({
-        message: "Order placed successfully",
-        order: result.rows[0],
-      });
+      res
+        .status(201)
+        .json({ message: "Order placed successfully", order: result.rows });
     } catch (err) {
-      // Rollback transaction on error
       await pool.query("ROLLBACK").catch((rollbackErr) => {
         console.error(`[${startTime}] Rollback failed:`, rollbackErr.message);
       });
-
       console.error(`[${startTime}] Order processing error:`, {
         message: err.message,
         stack: err.stack,
-        orderData: orderData,
-        fileUrl: fileUrl,
+        orderData,
+        uploadedUrls,
         timestamp: new Date().toISOString(),
       });
-
       res
         .status(500)
         .json({ message: "❌ Failed to place order", error: err.message });
@@ -303,8 +302,6 @@ router.post("/place-order", authenticateToken, async (req, res) => {
 
   req.pipe(busboy);
 });
-
-// GET /orders
 
 // Get user orders, sorted by most recent first
 router.get("/orders", authenticateToken, async (req, res) => {
